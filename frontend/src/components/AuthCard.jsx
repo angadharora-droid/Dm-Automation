@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { AlertCircle, KeyRound, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import BrandGlyph from './BrandGlyph.jsx';
 
 export default function AuthCard({ initialSession, error, connecting, onConnect }) {
   const [adminKey, setAdminKey] = useState(initialSession.adminKey);
@@ -12,17 +13,18 @@ export default function AuthCard({ initialSession, error, connecting, onConnect 
   };
 
   return (
-    <section className="card" style={{ maxWidth: 520, margin: '48px auto 0' }}>
-      <div className="card-head">
-        <h2>
-          <KeyRound size={17} aria-hidden="true" />
-          Admin access
-        </h2>
+    <section className="card auth-card">
+      <div className="auth-brand">
+        <div className="brand-mark" aria-hidden="true">
+          <BrandGlyph size={26} />
+        </div>
+        <h1>Instagram Automation</h1>
+        <p className="hint">
+          Sign in with the <code>ADMIN_API_KEY</code> set on your server. It stays in this browser
+          tab only.
+        </p>
       </div>
-      <p className="hint" style={{ marginTop: 0, marginBottom: 16 }}>
-        Enter the <code>ADMIN_API_KEY</code> configured on the server. It stays in this browser
-        tab only and is sent as the <code>x-admin-key</code> header.
-      </p>
+
       <form onSubmit={submit}>
         <div className="field">
           <label htmlFor="admin-key">Admin API key</label>
@@ -54,26 +56,21 @@ export default function AuthCard({ initialSession, error, connecting, onConnect 
           </div>
         ) : (
           <p className="hint" style={{ marginTop: 0 }}>
-            Hosting this page separately from the backend?{' '}
-            <button
-              type="button"
-              className="ghost"
-              style={{ minHeight: 0, padding: '2px 8px', fontSize: 13 }}
-              onClick={() => setShowBackendField(true)}
-            >
+            Hosting this page separately?{' '}
+            <button type="button" className="link-btn" onClick={() => setShowBackendField(true)}>
               Set a backend URL
             </button>
           </p>
         )}
 
-        <button type="submit" disabled={connecting} style={{ width: '100%', marginTop: 8 }}>
+        <button type="submit" disabled={connecting} style={{ width: '100%', marginTop: 10 }}>
           {connecting ? (
             <>
               <Loader2 size={16} className="spin" aria-hidden="true" />
               Connecting…
             </>
           ) : (
-            'Connect'
+            'Sign in'
           )}
         </button>
       </form>

@@ -28,7 +28,8 @@ function TypeBadge({ type }) {
   );
 }
 
-export default function ActivitySection({ entries, persistent }) {
+export default function ActivitySection({ entries, persistent, limit, onViewAll }) {
+  const shown = limit ? entries.slice(0, limit) : entries;
   return (
     <section className="card">
       <div className="card-head">
@@ -36,14 +37,22 @@ export default function ActivitySection({ entries, persistent }) {
           <ListOrdered size={17} aria-hidden="true" />
           Recent activity
         </h2>
-        <span className="hint">
-          {persistent ? 'Stored in MongoDB · kept 7 days' : 'In-memory · cleared on restart'}
-        </span>
+        {onViewAll && entries.length > 0 ? (
+          <button type="button" className="link-btn" onClick={onViewAll}>
+            View all
+          </button>
+        ) : (
+          <span className="hint">
+            {persistent ? 'Stored in MongoDB · kept 7 days' : 'In-memory · cleared on restart'}
+          </span>
+        )}
       </div>
 
-      {entries.length === 0 ? (
+      {shown.length === 0 ? (
         <div className="empty-state">
-          <Inbox size={36} strokeWidth={1.5} aria-hidden="true" />
+          <span className="empty-icon" aria-hidden="true">
+            <Inbox size={26} strokeWidth={1.8} />
+          </span>
           <strong>No activity yet</strong>
           <p>
             Comment <code>PRICE</code> on one of your posts from a tester account, or send your
@@ -62,7 +71,7 @@ export default function ActivitySection({ entries, persistent }) {
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry) => (
+              {shown.map((entry) => (
                 <tr key={entry.id}>
                   <td className="time" title={new Date(entry.timestamp).toLocaleString()}>
                     {relativeTime(entry.timestamp)}

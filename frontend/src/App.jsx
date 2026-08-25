@@ -1,19 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bot, LogOut, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { apiGet, loadSession, normalizeBaseUrl, saveSession } from './api.js';
 import ActivitySection from './components/ActivitySection.jsx';
 import AuthCard from './components/AuthCard.jsx';
-import CountersSection from './components/CountersSection.jsx';
 import ExamplesSection from './components/ExamplesSection.jsx';
+import HomeView from './components/HomeView.jsx';
 import RulesSection from './components/RulesSection.jsx';
+import Sidebar from './components/Sidebar.jsx';
 import StatusSection from './components/StatusSection.jsx';
-import { relativeTime } from './utils.js';
+import { getGreeting, relativeTime } from './utils.js';
 
 const REFRESH_MS = 10_000;
+
+const PAGE_TITLES = {
+  activity: { title: 'Activity', sub: 'Every webhook event and automated action, as it happens.' },
+  automations: { title: 'Automations', sub: 'What your customers experience, and the rules behind it.' },
+  setup: { title: 'Setup', sub: 'Connection status and server configuration.' },
+};
+
+function homePageMeta() {
+  return { title: `${getGreeting()} 👋`, sub: "Here's what your automation has been doing." };
+}
 
 export default function App() {
   const [session, setSession] = useState(loadSession);
   const [phase, setPhase] = useState('idle'); // idle | connecting | connected
+  const [view, setView] = useState('home');
   const [authError, setAuthError] = useState('');
   const [overview, setOverview] = useState(null);
   const [activity, setActivity] = useState([]);
@@ -65,6 +77,7 @@ export default function App() {
     setSession({ adminKey: '', backendUrl: sessionRef.current.backendUrl });
     setPhase('idle');
     setOverview(null);
+    setView('home');
     setAuthError('');
   }, []);
 
@@ -99,25 +112,42 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 
-  const connected = phase === 'connected';
+  if (phase !== 'connected' || !overview) {
+    return (
+      <div className="auth-wrap">
+        <AuthCard
+          initialSession={session}
+          error={authError}
+          connecting={phase === 'connecting'}
+          onConnect={connect}
+        />
+      </div>
+    );
+  }
+
+  const pageMeta = view === 'home' ? homePageMeta() : PAGE_TITLES[view];
 
   return (
-    <>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <div className="brand">
-            <div className="brand-mark" aria-hidden="true">
-              <Bot size={19} strokeWidth={2} />
+    <div className="app">
+      <Sidebar view={view} onNavigate={setView} onDisconnect={disconnect} />
+
+      <div className="content">
+        <div className="content-inner">
+          <div className="page-head">
+            <div>
+              <h1 className="page-title">{pageMeta.title}</h1>
+              <p className="page-sub">{pageMeta.sub}</p>
             </div>
-            <h1>Instagram Automation</h1>
-          </div>
-          <div className="topbar-actions">
-            {connected && lastUpdated && (
-              <span className="hint" title={new Date(lastUpdated).toLocaleString()}>
-                Updated {relativeTime(lastUpdated)}
+            <div className="page-actions">
+              <span className="pill live">
+                <span className="dot" aria-hidden="true" />
+                Live
               </span>
-            )}
-            {connected && (
+              {lastUpdated && (
+                <span className="hint" title={new Date(lastUpdated).toLocaleString()}>
+                  {relativeTime(lastUpdated)}
+                </span>
+              )}
               <button
                 type="button"
                 className="ghost icon-btn"
@@ -128,54 +158,27 @@ export default function App() {
               >
                 <RefreshCw size={16} className={refreshing ? 'spin' : undefined} />
               </button>
-            )}
-            <span className={`pill ${connected ? 'live' : ''}`}>
-              <span className="dot" aria-hidden="true" />
-              {connected ? 'Live' : 'Not connected'}
-            </span>
-            {connected && (
-              <button
-                type="button"
-                className="ghost icon-btn"
-                onClick={disconnect}
-                aria-label="Disconnect and forget admin key"
-                title="Disconnect"
-              >
-                <LogOut size={16} />
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <div className="shell">
-        {!connected && (
-          <AuthCard
-            initialSession={session}
-            error={authError}
-            connecting={phase === 'connecting'}
-            onConnect={connect}
-          />
-        )}
-
-        {connected && overview && (
-          <main>
-            <div className="grid-2">
-              <StatusSection overview={overview} />
-              <CountersSection counters={overview.counters} />
             </div>
-            {rules && <ExamplesSection rules={rules} />}
-            <ActivitySection entries={activity} persistent={overview.database === 'mongodb'} />
-            {rules && <RulesSection rules={rules} />}
-          </main>
-        )}
-      </div>
+          </div>
 
-      <footer>
-        <span className="hint">
-          {connected ? 'Auto-refreshes every 10 seconds.' : 'Instagram automation admin panel.'}
-        </span>
-      </footer>
-    </>
+          {view === 'home' && (
+            <HomeView overview={overview} activity={activity} onNavigate={setView} />
+          )}
+
+          {view === 'activity' && (
+            <ActivitySection entries={activity} persistent={overview.database === 'mongodb'} />
+          )}
+
+          {view === 'automations' && rules && (
+            <>
+              <ExamplesSection rules={rules} />
+              <RulesSection rules={rules} />
+            </>
+          )}
+
+          {view === 'setup' && <StatusSection overview={overview} />}
+        </div>
+      </div>
+    </div>
   );
 }
