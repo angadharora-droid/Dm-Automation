@@ -140,12 +140,9 @@ All variables live on the **backend** (copy `backend/.env.example` to `backend/.
 
 ## Automation rules
 
-Default rules live in [backend/src/config/automation.config.js](backend/src/config/automation.config.js):
-comments containing `price`, `info`, `details`, `buy`, or `link` trigger a private reply (DM)
-plus a public comment reply; DMs containing `price` / `cost` / `how much` (and the info group)
-get a keyword-based reply. Unmatched DMs get **no** automated reply unless you set a fallback.
-
-Override without code changes by setting `AUTOMATION_RULES` to JSON:
+**No rules ship by default** — the bot receives events but never replies until you define your
+own rules. The dashboard's Automations page shows a ready-to-copy template when no rules are
+configured. Define rules by setting the `AUTOMATION_RULES` environment variable to JSON:
 
 ```json
 {

@@ -3,9 +3,9 @@ import { logger } from '../utils/logger.js';
 /**
  * Automation rule configuration.
  *
- * Rules live here (with an env-var override) instead of being scattered
- * through the code, so campaigns can be changed without touching the
- * automation engine. Later this can move to MongoDB per-post/per-campaign.
+ * No rules ship by default — the owner defines their own via the
+ * AUTOMATION_RULES environment variable (JSON matching the shapes below).
+ * With no rules configured the bot receives events but never replies.
  *
  * Rule shapes:
  * - comment rule: { id, keywords[], action, dmMessage?, publicReplyMessage?, mediaIds? }
@@ -17,28 +17,8 @@ import { logger } from '../utils/logger.js';
  * keyword-free replies are one of the layers preventing self-reply loops.
  */
 export const defaultAutomationConfig = {
-  commentRules: [
-    {
-      id: 'comment-interest-keywords',
-      keywords: ['price', 'info', 'details', 'buy', 'link'],
-      action: 'private_and_public_reply',
-      dmMessage:
-        "Hi! Thanks for your interest. I'll send you everything you need to know — reply here if you have any questions!",
-      publicReplyMessage: 'Thanks for reaching out — just sent you a DM! 📩',
-    },
-  ],
-  dmRules: [
-    {
-      id: 'dm-price',
-      keywords: ['price', 'cost', 'how much'],
-      reply: "Hi! I'd be happy to help. I'll share the pricing with you right away — one moment!",
-    },
-    {
-      id: 'dm-interest-keywords',
-      keywords: ['info', 'details', 'buy', 'link'],
-      reply: 'Hi! Thanks for your message — here is what you asked for. Let me know if I can help with anything else!',
-    },
-  ],
+  commentRules: [],
+  dmRules: [],
   dmFallbackReply: null,
 };
 

@@ -12,6 +12,7 @@ import ActivitySection from './components/ActivitySection.jsx';
 import AuthCard from './components/AuthCard.jsx';
 import ExamplesSection from './components/ExamplesSection.jsx';
 import HomeView from './components/HomeView.jsx';
+import NoRulesCard from './components/NoRulesCard.jsx';
 import RulesSection from './components/RulesSection.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import StatusSection from './components/StatusSection.jsx';
@@ -189,12 +190,17 @@ export default function App() {
             <ActivitySection entries={activity} persistent={overview.database === 'mongodb'} />
           )}
 
-          {view === 'automations' && rules && (
-            <>
-              <ExamplesSection rules={rules} />
-              <RulesSection rules={rules} />
-            </>
-          )}
+          {view === 'automations' &&
+            rules &&
+            ((rules.commentRules?.length ?? 0) + (rules.dmRules?.length ?? 0) === 0 &&
+            !rules.dmFallbackReply ? (
+              <NoRulesCard />
+            ) : (
+              <>
+                <ExamplesSection rules={rules} />
+                <RulesSection rules={rules} />
+              </>
+            ))}
 
           {view === 'setup' && <StatusSection overview={overview} />}
         </div>
