@@ -100,6 +100,34 @@ export class InstagramService {
   }
 
   /**
+   * Send a generic-template message with one tappable web_url button.
+   * Verified payload per Meta docs (Instagram Login messaging, generic
+   * template): element title <= 80 chars, up to 3 buttons. Not supported for
+   * comment private replies (those are text-only per Meta).
+   */
+  sendButtonTemplate(recipientIgsid, { header, buttonTitle, buttonUrl }) {
+    return this.api.post(`${this.accountPath}/messages`, {
+      recipient: { id: recipientIgsid },
+      message: {
+        attachment: {
+          type: 'template',
+          payload: {
+            template_type: 'generic',
+            elements: [
+              {
+                title: String(header ?? buttonTitle).slice(0, 80),
+                buttons: [
+                  { type: 'web_url', url: buttonUrl, title: String(buttonTitle).slice(0, 20) },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    });
+  }
+
+  /**
    * Enable webhook delivery for this account. Meta requires this in addition
    * to the App Dashboard webhook configuration.
    */

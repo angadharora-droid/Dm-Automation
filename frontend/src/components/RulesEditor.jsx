@@ -43,6 +43,9 @@ function toDraft(saved) {
       id: rule.id,
       keywordsText: (rule.keywords ?? []).join(', '),
       reply: rule.reply ?? '',
+      buttonTitle: rule.buttonTitle ?? '',
+      buttonUrl: rule.buttonUrl ?? '',
+      buttonHeader: rule.buttonHeader ?? '',
     })),
     dmFallbackReply: saved.dmFallbackReply ?? '',
   };
@@ -62,6 +65,9 @@ function toConfig(draft) {
       id: rule.id.trim(),
       keywords: splitList(rule.keywordsText),
       reply: rule.reply.trim(),
+      buttonTitle: rule.buttonTitle.trim() || undefined,
+      buttonUrl: rule.buttonUrl.trim() || undefined,
+      buttonHeader: rule.buttonHeader.trim() || undefined,
     })),
     dmFallbackReply: draft.dmFallbackReply.trim() || null,
   };
@@ -122,6 +128,9 @@ export default function RulesEditor({ saved, onSave }) {
         id: `dm-rule-${d.dmRules.length + 1}`,
         keywordsText: '',
         reply: '',
+        buttonTitle: '',
+        buttonUrl: '',
+        buttonHeader: '',
       });
       return d;
     });
@@ -240,8 +249,8 @@ export default function RulesEditor({ saved, onSave }) {
                     onChange={(e) => editCommentRule(rule.key, 'dmMessage', e.target.value)}
                   />
                   <p className="hint help">
-                    <code>{'{username}'}</code> inserts the commenter's handle — write{' '}
-                    <code>{'Hey @{username}!'}</code> to greet them by name.
+                    <code>{'{username}'}</code> inserts the commenter's handle. Note: Meta allows
+                    text only in comment-DMs — tappable buttons are available on DM rules.
                   </p>
                 </div>
               )}
@@ -328,6 +337,47 @@ export default function RulesEditor({ saved, onSave }) {
                   <code>{'{username}'}</code> inserts the sender's handle automatically.
                 </p>
               </div>
+
+              <div className="editor-row button-row">
+                <div className="field">
+                  <label htmlFor={`dm-btn-title-${rule.key}`}>
+                    Button text <span className="hint">(optional, max 20 chars)</span>
+                  </label>
+                  <input
+                    id={`dm-btn-title-${rule.key}`}
+                    maxLength={20}
+                    placeholder="View Menu & Links"
+                    value={rule.buttonTitle}
+                    onChange={(e) => editDmRule(rule.key, 'buttonTitle', e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor={`dm-btn-url-${rule.key}`}>Button link</label>
+                  <input
+                    id={`dm-btn-url-${rule.key}`}
+                    type="url"
+                    placeholder="https://linktr.ee/…"
+                    value={rule.buttonUrl}
+                    onChange={(e) => editDmRule(rule.key, 'buttonUrl', e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor={`dm-btn-head-${rule.key}`}>
+                    Button card heading <span className="hint">(optional)</span>
+                  </label>
+                  <input
+                    id={`dm-btn-head-${rule.key}`}
+                    maxLength={80}
+                    placeholder="Micky's ❤️"
+                    value={rule.buttonHeader}
+                    onChange={(e) => editDmRule(rule.key, 'buttonHeader', e.target.value)}
+                  />
+                </div>
+              </div>
+              <p className="hint" style={{ marginTop: -4 }}>
+                Adds a real tappable button under the reply (sent as a second message). Fill both
+                button text and link to enable it.
+              </p>
             </div>
           ))}
 

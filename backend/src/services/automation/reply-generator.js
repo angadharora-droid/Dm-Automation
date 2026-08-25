@@ -6,11 +6,12 @@ import { findMatchingRule } from './keyword-matcher.js';
  *
  * The DM automation engine only depends on the ReplyGenerator contract:
  *
- *   generateReply({ channel, text, senderId }) -> Promise<string|null>
+ *   generateReply({ channel, text, senderId })
+ *     -> Promise<string | { text?, button?: {header?, title, url} } | null>
  *
- * (null = stay silent). An AI-backed implementation (e.g.
- * AnthropicReplyGenerator) can replace the rule-based one in app.js without
- * touching the Instagram/webhook integration.
+ * (null = stay silent; a plain string is treated as { text }). An AI-backed
+ * implementation (e.g. AnthropicReplyGenerator) can replace the rule-based
+ * one in app.js without touching the Instagram/webhook integration.
  */
 
 export class RuleBasedReplyGenerator {
@@ -24,7 +25,13 @@ export class RuleBasedReplyGenerator {
     const rule = findMatchingRule(input.text, config.dmRules);
     if (rule) {
       logger.info('AUTOMATION', `Keyword matched: rule "${rule.id}"`, { channel: input.channel });
-      return rule.reply;
+      return {
+        text: rule.reply,
+        button:
+          rule.buttonTitle && rule.buttonUrl
+            ? { header: rule.buttonHeader, title: rule.buttonTitle, url: rule.buttonUrl }
+            : undefined,
+      };
     }
     return config.dmFallbackReply;
   }

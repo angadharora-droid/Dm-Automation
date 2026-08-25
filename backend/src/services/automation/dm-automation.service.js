@@ -86,22 +86,31 @@ export class DmAutomationService {
       return;
     }
 
-    const reply = await this.deps.generator.generateReply({
+    const generated = await this.deps.generator.generateReply({
       channel: 'dm',
       text,
       senderId,
     });
-    if (!reply) {
+    if (!generated) {
       logger.debug('AUTOMATION', 'No reply generated for DM; staying silent');
       return;
     }
-
-    // Personalize: only pay for the profile lookup when the reply uses it.
-    let renderedReply = reply;
-    if (templateNeedsProfile(reply)) {
-      const profile = await this.lookupProfile(senderId);
-      renderedReply = renderTemplate(reply, profile);
+    // Generators may return a plain string or { text?, button? }.
+    const reply = typeof generated === 'string' ? { text: generated } : generated;
+    if (!reply.text && !reply.button) {
+      logger.debug('AUTOMATION', 'Empty reply generated for DM; staying silent');
+      return;
     }
+
+    // Personalize: only pay for the profile lookup when a template needs it.
+    let profile;
+    const needsProfile =
+      templateNeedsProfile(reply.text) || templateNeedsProfile(reply.button?.header);
+    if (needsProfile) profile = await this.lookupProfile(senderId);
+    const renderedText = reply.text ? renderTemplate(reply.text, profile ?? {}) : undefined;
+    const renderedHeader = reply.button?.header
+      ? renderTemplate(reply.button.header, profile ?? {})
+      : undefined;
 
     if (!this.deps.throttle.allow(senderId)) {
       logger.warn('AUTOMATION', 'DM reply throttled for user', { mid: message.mid });
@@ -109,10 +118,25 @@ export class DmAutomationService {
     }
 
     try {
-      await this.deps.instagram.sendTextMessage(senderId, renderedReply);
-      logger.info('MESSAGE', 'Response sent', { mid: message.mid });
+      if (renderedText) {
+        await this.deps.instagram.sendTextMessage(senderId, renderedText);
+      }
+      if (reply.button) {
+        await this.deps.instagram.sendButtonTemplate(senderId, {
+          header: renderedHeader ?? reply.button.title,
+          buttonTitle: reply.button.title,
+          buttonUrl: reply.button.url,
+        });
+      }
+      logger.info('MESSAGE', 'Response sent', {
+        mid: message.mid,
+        withButton: Boolean(reply.button),
+      });
       this.deps.activity?.increment('dmsSent');
-      this.deps.activity?.record('message', 'Automated DM reply sent', { mid: message.mid });
+      this.deps.activity?.record('message', 'Automated DM reply sent', {
+        mid: message.mid,
+        withButton: Boolean(reply.button),
+      });
     } catch (err) {
       this.deps.activity?.increment('errors');
       this.deps.activity?.record('error', 'Failed to send DM reply', { mid: message.mid });

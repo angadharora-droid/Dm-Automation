@@ -52,6 +52,7 @@ export function createInstagramServiceMock() {
     replyToComment: vi.fn(async () => ({ id: 'new-comment-id' })),
     sendPrivateReplyToComment: vi.fn(async () => ({ recipient_id: 'r', message_id: 'm' })),
     sendTextMessage: vi.fn(async () => ({ recipient_id: 'r', message_id: 'm' })),
+    sendButtonTemplate: vi.fn(async () => ({ recipient_id: 'r', message_id: 'mb' })),
     subscribeToWebhookFields: vi.fn(async () => ({ success: true })),
   };
 }

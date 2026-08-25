@@ -105,7 +105,26 @@ export function validateAutomationConfig(input) {
     const id = cleanText(rule?.id, `${label}: name`, errors, { required: true }) ?? `dm-rule-${index + 1}`;
     const keywords = cleanKeywords(rule?.keywords, label, errors);
     const reply = cleanText(rule?.reply, `${label}: reply`, errors, { required: true }) ?? '';
-    return { id, keywords, reply };
+
+    // Optional tappable button (generic template). Both text + URL required together.
+    const buttonTitle = cleanText(rule?.buttonTitle, `${label}: button text`, errors);
+    const buttonUrl = cleanText(rule?.buttonUrl, `${label}: button URL`, errors);
+    const buttonHeader = cleanText(rule?.buttonHeader, `${label}: button heading`, errors);
+    if (buttonTitle || buttonUrl || buttonHeader) {
+      if (!buttonUrl) errors.push(`${label}: a button URL is required when a button is set`);
+      else if (!/^https?:\/\/\S+$/i.test(buttonUrl))
+        errors.push(`${label}: button URL must start with http:// or https://`);
+      if (!buttonTitle) errors.push(`${label}: button text is required when a button is set`);
+      else if (buttonTitle.length > 20)
+        errors.push(`${label}: button text must be 20 characters or less`);
+      if (buttonHeader && buttonHeader.length > 80)
+        errors.push(`${label}: button heading must be 80 characters or less`);
+    }
+
+    const base = { id, keywords, reply };
+    return buttonTitle && buttonUrl
+      ? { ...base, buttonTitle, buttonUrl, buttonHeader: buttonHeader || undefined }
+      : base;
   });
 
   const seen = new Set();

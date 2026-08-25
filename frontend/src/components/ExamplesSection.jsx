@@ -68,6 +68,14 @@ function DmExample({ rule }) {
       </div>
       <Bubble side="left" icon={Send} tag="Customer @somefan sends a DM" text={trigger} />
       <Bubble side="right" icon={Bot} tag="Automated reply" text={renderPreview(rule.reply)} />
+      {rule.buttonTitle && rule.buttonUrl && (
+        <div className="bubble-row right">
+          <div className="bubble right bubble-card">
+            <div className="bubble-card-head">{renderPreview(rule.buttonHeader || rule.buttonTitle)}</div>
+            <div className="bubble-card-btn">{rule.buttonTitle}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
