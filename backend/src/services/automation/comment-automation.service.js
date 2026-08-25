@@ -6,7 +6,10 @@ import { findMatchingRule } from './keyword-matcher.js';
  * Handles `comments` webhook events: dedup, loop guards, keyword matching,
  * and the private-reply / public-reply actions.
  *
- * @param deps {{ instagram, idempotency, throttle, config, selfAccountId?, activity? }}
+ * Rules come from the RuleStore per event, so dashboard edits apply
+ * immediately.
+ *
+ * @param deps {{ instagram, idempotency, throttle, rules, selfAccountId?, activity? }}
  */
 export class CommentAutomationService {
   constructor(deps) {
@@ -23,6 +26,7 @@ export class CommentAutomationService {
       logger.warn('COMMENT', 'Comment event without id ignored');
       return;
     }
+    const config = await this.deps.rules.getConfig();
     const text = value.text ?? '';
     const fromId = value.from?.id;
 
@@ -41,7 +45,7 @@ export class CommentAutomationService {
     // Loop protection layer 2: never react to text that IS one of our
     // configured public replies (covers webhook `from.id` edge cases).
     if (
-      this.deps.config.commentRules.some(
+      config.commentRules.some(
         (rule) => rule.publicReplyMessage && rule.publicReplyMessage === text,
       )
     ) {
@@ -57,7 +61,7 @@ export class CommentAutomationService {
       return;
     }
 
-    const applicableRules = this.deps.config.commentRules.filter(
+    const applicableRules = config.commentRules.filter(
       (rule) => !rule.mediaIds?.length || (value.media?.id && rule.mediaIds.includes(value.media.id)),
     );
     const rule = findMatchingRule(text, applicableRules);

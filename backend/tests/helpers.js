@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 import { CommentAutomationService } from '../src/services/automation/comment-automation.service.js';
 import { DmAutomationService } from '../src/services/automation/dm-automation.service.js';
 import { RuleBasedReplyGenerator } from '../src/services/automation/reply-generator.js';
+import { InMemoryRuleStore } from '../src/services/automation/rule-store.js';
 import { ActivityLog } from '../src/services/events/activity-log.js';
 import { InMemoryIdempotencyStore } from '../src/services/events/idempotency.js';
 import { ReplyThrottle } from '../src/services/events/reply-throttle.js';
@@ -57,6 +58,7 @@ export const testAutomationConfig = {
 export function createTestServices(configOverride) {
   const instagram = createInstagramServiceMock();
   const config = configOverride ?? testAutomationConfig;
+  const ruleStore = new InMemoryRuleStore(config);
   const idempotency = new InMemoryIdempotencyStore();
   // Generous throttle so it never interferes outside dedicated throttle tests.
   const throttle = new ReplyThrottle(1000, 60_000);
@@ -65,13 +67,13 @@ export function createTestServices(configOverride) {
   const services = {
     instagramService: instagram,
     activity,
-    automationConfig: config,
+    ruleStore,
     databaseConnected: false,
     commentAutomation: new CommentAutomationService({
       instagram,
       idempotency,
       throttle,
-      config,
+      rules: ruleStore,
       selfAccountId: SELF_ACCOUNT_ID,
       activity,
     }),
@@ -79,10 +81,10 @@ export function createTestServices(configOverride) {
       instagram,
       idempotency,
       throttle,
-      generator: new RuleBasedReplyGenerator(config),
+      generator: new RuleBasedReplyGenerator(ruleStore),
       selfAccountId: SELF_ACCOUNT_ID,
       activity,
     }),
   };
-  return { services, instagram, activity };
+  return { services, instagram, activity, ruleStore };
 }

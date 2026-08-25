@@ -23,6 +23,9 @@ export const defaultAutomationConfig = {
 };
 
 const COMMENT_ACTIONS = ['private_reply', 'public_reply', 'private_and_public_reply'];
+const MAX_RULES = 50;
+const MAX_KEYWORDS = 20;
+const MAX_TEXT = 1000;
 
 function isValidCommentRule(rule) {
   return (
@@ -40,6 +43,83 @@ function isValidDmRule(rule) {
     rule.keywords.every((keyword) => typeof keyword === 'string') &&
     typeof rule.reply === 'string'
   );
+}
+
+function cleanKeywords(keywords, label, errors) {
+  if (!Array.isArray(keywords)) {
+    errors.push(`${label}: keywords must be an array of strings`);
+    return [];
+  }
+  const cleaned = keywords
+    .filter((keyword) => typeof keyword === 'string')
+    .map((keyword) => keyword.trim())
+    .filter(Boolean);
+  if (cleaned.length === 0) errors.push(`${label}: at least one keyword is required`);
+  if (cleaned.length > MAX_KEYWORDS) errors.push(`${label}: at most ${MAX_KEYWORDS} keywords`);
+  if (cleaned.some((keyword) => keyword.length > 100))
+    errors.push(`${label}: keywords must be 100 characters or less`);
+  return cleaned;
+}
+
+function cleanText(value, label, errors, { required = false } = {}) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (required && !text) errors.push(`${label} is required`);
+  if (text.length > MAX_TEXT) errors.push(`${label} must be ${MAX_TEXT} characters or less`);
+  return text || undefined;
+}
+
+/**
+ * Validates and normalizes a full automation config (as submitted from the
+ * dashboard rule editor). Returns { config, errors } — errors is empty when
+ * the config is safe to save.
+ */
+export function validateAutomationConfig(input) {
+  const errors = [];
+  const source = input && typeof input === 'object' ? input : {};
+
+  const commentRulesIn = Array.isArray(source.commentRules) ? source.commentRules : [];
+  const dmRulesIn = Array.isArray(source.dmRules) ? source.dmRules : [];
+  if (commentRulesIn.length > MAX_RULES) errors.push(`At most ${MAX_RULES} comment rules`);
+  if (dmRulesIn.length > MAX_RULES) errors.push(`At most ${MAX_RULES} DM rules`);
+
+  const commentRules = commentRulesIn.map((rule, index) => {
+    const label = `Comment rule ${index + 1}`;
+    const id = cleanText(rule?.id, `${label}: name`, errors, { required: true }) ?? `rule-${index + 1}`;
+    const keywords = cleanKeywords(rule?.keywords, label, errors);
+    const action = COMMENT_ACTIONS.includes(rule?.action) ? rule.action : null;
+    if (!action) errors.push(`${label}: action must be one of ${COMMENT_ACTIONS.join(', ')}`);
+    const dmMessage = cleanText(rule?.dmMessage, `${label}: DM message`, errors);
+    const publicReplyMessage = cleanText(rule?.publicReplyMessage, `${label}: public reply`, errors);
+    if ((action === 'private_reply' || action === 'private_and_public_reply') && !dmMessage)
+      errors.push(`${label}: a DM message is required for action "${action}"`);
+    if ((action === 'public_reply' || action === 'private_and_public_reply') && !publicReplyMessage)
+      errors.push(`${label}: a public reply is required for action "${action}"`);
+    const mediaIds = Array.isArray(rule?.mediaIds)
+      ? rule.mediaIds.filter((id_) => typeof id_ === 'string').map((id_) => id_.trim()).filter(Boolean)
+      : [];
+    return { id, keywords, action: action ?? 'private_reply', dmMessage, publicReplyMessage, mediaIds };
+  });
+
+  const dmRules = dmRulesIn.map((rule, index) => {
+    const label = `DM rule ${index + 1}`;
+    const id = cleanText(rule?.id, `${label}: name`, errors, { required: true }) ?? `dm-rule-${index + 1}`;
+    const keywords = cleanKeywords(rule?.keywords, label, errors);
+    const reply = cleanText(rule?.reply, `${label}: reply`, errors, { required: true }) ?? '';
+    return { id, keywords, reply };
+  });
+
+  const seen = new Set();
+  for (const rule of [...commentRules, ...dmRules]) {
+    if (seen.has(rule.id)) errors.push(`Duplicate rule name "${rule.id}" — names must be unique`);
+    seen.add(rule.id);
+  }
+
+  const dmFallbackReply =
+    typeof source.dmFallbackReply === 'string' && source.dmFallbackReply.trim()
+      ? source.dmFallbackReply.trim().slice(0, MAX_TEXT)
+      : null;
+
+  return { config: { commentRules, dmRules, dmFallbackReply }, errors };
 }
 
 /**

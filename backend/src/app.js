@@ -13,6 +13,7 @@ import { createWebhookRouter } from './routes/webhook.routes.js';
 import { CommentAutomationService } from './services/automation/comment-automation.service.js';
 import { DmAutomationService } from './services/automation/dm-automation.service.js';
 import { RuleBasedReplyGenerator } from './services/automation/reply-generator.js';
+import { InMemoryRuleStore, MongoRuleStore } from './services/automation/rule-store.js';
 import { MongoActivityLog } from './services/db/mongo-activity-log.js';
 import { MongoIdempotencyStore } from './services/db/mongo-idempotency.store.js';
 import { ActivityLog } from './services/events/activity-log.js';
@@ -34,16 +35,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  */
 export async function createDefaultServices({ mongo } = {}) {
   const config = getConfig();
-  const automationConfig = loadAutomationConfig();
+  // The AUTOMATION_RULES env var (or empty config) seeds the rule store; once
+  // rules are saved from the dashboard, the stored version wins.
+  const seedConfig = loadAutomationConfig();
 
   let idempotency;
   let activity;
+  let ruleStore;
   if (mongo?.db) {
     idempotency = await new MongoIdempotencyStore(mongo.db).init();
     activity = await new MongoActivityLog(mongo.db).init();
+    ruleStore = new MongoRuleStore(mongo.db, seedConfig);
   } else {
     idempotency = new InMemoryIdempotencyStore();
     activity = new ActivityLog();
+    ruleStore = new InMemoryRuleStore(seedConfig);
   }
 
   const apiClient = new MetaApiClient({
@@ -55,18 +61,18 @@ export async function createDefaultServices({ mongo } = {}) {
   const instagramService = new InstagramService(apiClient, config.instagramAccountId);
 
   const throttle = new ReplyThrottle();
-  const generator = new RuleBasedReplyGenerator(automationConfig);
+  const generator = new RuleBasedReplyGenerator(ruleStore);
 
   return {
     instagramService,
     activity,
-    automationConfig,
+    ruleStore,
     databaseConnected: Boolean(mongo?.db),
     commentAutomation: new CommentAutomationService({
       instagram: instagramService,
       idempotency,
       throttle,
-      config: automationConfig,
+      rules: ruleStore,
       selfAccountId: config.instagramAccountId,
       activity,
     }),
@@ -107,7 +113,7 @@ export function createApp(services) {
     '/api/dashboard',
     createDashboardRouter({
       activity: services.activity,
-      automationConfig: services.automationConfig,
+      ruleStore: services.ruleStore,
       databaseConnected: services.databaseConnected,
     }),
   );

@@ -1,3 +1,4 @@
+import { validateAutomationConfig } from '../config/automation.config.js';
 import { getConfig, missingCriticalConfig } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import { requireAdminKey } from './instagram.controller.js';
@@ -53,13 +54,44 @@ export function createDashboardController(deps) {
     },
 
     /** GET /api/dashboard/rules */
-    rules(req, res) {
+    async rules(req, res) {
       if (!requireAdminKey(req, res)) return;
-      res.json({
-        commentRules: deps.automationConfig.commentRules,
-        dmRules: deps.automationConfig.dmRules,
-        dmFallbackReply: deps.automationConfig.dmFallbackReply,
-      });
+      try {
+        const config = await deps.ruleStore.getConfig();
+        res.json({
+          commentRules: config.commentRules,
+          dmRules: config.dmRules,
+          dmFallbackReply: config.dmFallbackReply,
+        });
+      } catch (err) {
+        logger.error('DASHBOARD', `Failed to load rules: ${err.message}`);
+        res.status(500).json({ error: 'Failed to load rules' });
+      }
+    },
+
+    /** PUT /api/dashboard/rules — full config from the dashboard editor. */
+    async updateRules(req, res) {
+      if (!requireAdminKey(req, res)) return;
+      const { config, errors } = validateAutomationConfig(req.body);
+      if (errors.length > 0) {
+        res.status(400).json({ error: 'Invalid rules', details: errors });
+        return;
+      }
+      try {
+        const saved = await deps.ruleStore.setConfig(config);
+        logger.info('AUTOMATION', 'Automation rules updated from dashboard', {
+          commentRules: saved.commentRules.length,
+          dmRules: saved.dmRules.length,
+        });
+        res.json({
+          commentRules: saved.commentRules,
+          dmRules: saved.dmRules,
+          dmFallbackReply: saved.dmFallbackReply,
+        });
+      } catch (err) {
+        logger.error('DASHBOARD', `Failed to save rules: ${err.message}`);
+        res.status(500).json({ error: 'Failed to save rules' });
+      }
     },
   };
 }

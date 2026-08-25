@@ -170,7 +170,7 @@ function Simulator({ rules }) {
   );
 }
 
-export default function ExamplesSection({ rules }) {
+export default function ExamplesSection({ rules, subtitle = 'Generated from the live rules' }) {
   return (
     <section className="card">
       <div className="card-head">
@@ -178,7 +178,7 @@ export default function ExamplesSection({ rules }) {
           <MessagesSquare size={17} aria-hidden="true" />
           How the automation replies
         </h2>
-        <span className="hint">Generated from the live rules</span>
+        <span className="hint">{subtitle}</span>
       </div>
       {(rules.commentRules ?? []).map((rule) => (
         <CommentExample key={rule.id} rule={rule} />

@@ -36,6 +36,30 @@ export async function apiGet(base, auth, path) {
   return res.json();
 }
 
+export async function apiPut(base, auth, path, body) {
+  const res = await fetch(base + path, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', ...authHeaders(auth) },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) throw new Error('Session expired — please sign in again.');
+  if (!res.ok) {
+    let details = [];
+    let message = `Request failed (${res.status}).`;
+    try {
+      const parsed = await res.json();
+      if (parsed?.error) message = parsed.error;
+      if (Array.isArray(parsed?.details)) details = parsed.details;
+    } catch {
+      /* non-JSON error body */
+    }
+    const error = new Error(message);
+    error.details = details;
+    throw error;
+  }
+  return res.json();
+}
+
 /** Exchanges username/password for a session token. */
 export async function login(base, username, password) {
   const res = await fetch(`${base}/api/auth/login`, {

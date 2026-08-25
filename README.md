@@ -140,9 +140,14 @@ All variables live on the **backend** (copy `backend/.env.example` to `backend/.
 
 ## Automation rules
 
-**No rules ship by default** — the bot receives events but never replies until you define your
-own rules. The dashboard's Automations page shows a ready-to-copy template when no rules are
-configured. Define rules by setting the `AUTOMATION_RULES` environment variable to JSON:
+**Rules are managed from the dashboard**: the Automations page has a full editor — add
+comment/DM rules, pick keywords and actions, write the replies, and hit Save. Changes are
+validated, stored in MongoDB (`automation_config` collection), and take effect immediately —
+no redeploy. With no MongoDB, edits still work but reset on restart.
+
+No rules ship by default — the bot receives events but never replies until you create rules.
+The `AUTOMATION_RULES` env var is optional: it only **seeds** the store before the first
+dashboard save (same JSON shape):
 
 ```json
 {

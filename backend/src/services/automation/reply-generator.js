@@ -14,16 +14,18 @@ import { findMatchingRule } from './keyword-matcher.js';
  */
 
 export class RuleBasedReplyGenerator {
-  constructor(config) {
-    this.config = config;
+  /** @param ruleStore a RuleStore — rules are read per message so edits apply live. */
+  constructor(ruleStore) {
+    this.rules = ruleStore;
   }
 
   async generateReply(input) {
-    const rule = findMatchingRule(input.text, this.config.dmRules);
+    const config = await this.rules.getConfig();
+    const rule = findMatchingRule(input.text, config.dmRules);
     if (rule) {
       logger.info('AUTOMATION', `Keyword matched: rule "${rule.id}"`, { channel: input.channel });
       return rule.reply;
     }
-    return this.config.dmFallbackReply;
+    return config.dmFallbackReply;
   }
 }

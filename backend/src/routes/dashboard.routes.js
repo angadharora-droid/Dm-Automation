@@ -8,5 +8,6 @@ export function createDashboardRouter(deps) {
   router.get('/overview', controller.overview);
   router.get('/activity', controller.activity);
   router.get('/rules', controller.rules);
+  router.put('/rules', controller.updateRules);
   return router;
 }
