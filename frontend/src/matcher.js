@@ -29,3 +29,11 @@ export function textMatchesKeyword(text, keyword) {
 export function findMatchingRule(text, rules) {
   return rules.find((rule) => rule.keywords.some((keyword) => textMatchesKeyword(text, keyword)));
 }
+
+/**
+ * Renders reply-text placeholders for previews, mirroring the backend's
+ * template.js: {username}/{name} become a sample handle.
+ */
+export function renderPreview(text, username = 'somefan') {
+  return (text ?? '').replaceAll('{username}', username).replaceAll('{name}', username);
+}

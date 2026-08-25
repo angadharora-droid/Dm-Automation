@@ -34,6 +34,7 @@ export function signBody(body, secret = TEST_APP_SECRET) {
 export function createInstagramServiceMock() {
   return {
     getAccountInfo: vi.fn(async () => ({ user_id: SELF_ACCOUNT_ID, username: 'testaccount' })),
+    getUserProfile: vi.fn(async () => ({ username: 'somefan', name: 'Some Fan' })),
     getRecentMedia: vi.fn(async () => ({
       data: [
         {

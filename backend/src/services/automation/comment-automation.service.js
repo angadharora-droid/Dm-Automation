@@ -1,6 +1,7 @@
 import { logger } from '../../utils/logger.js';
 import { MetaApiError } from '../meta/meta-api.service.js';
 import { findMatchingRule } from './keyword-matcher.js';
+import { renderTemplate } from './template.js';
 
 /**
  * Handles `comments` webhook events: dedup, loop guards, keyword matching,
@@ -81,12 +82,18 @@ export class CommentAutomationService {
     const wantsPublicReply =
       rule.action === 'public_reply' || rule.action === 'private_and_public_reply';
 
+    // Personalize replies with the commenter's username from the webhook.
+    const templateVars = { username: value.from?.username };
+
     if (wantsDm && rule.dmMessage) {
       if (fromId && !this.deps.throttle.allow(fromId)) {
         logger.warn('AUTOMATION', 'Private reply throttled for user', { commentId });
       } else {
         try {
-          await this.deps.instagram.sendPrivateReplyToComment(commentId, rule.dmMessage);
+          await this.deps.instagram.sendPrivateReplyToComment(
+            commentId,
+            renderTemplate(rule.dmMessage, templateVars),
+          );
           logger.info('MESSAGE', 'Private reply (DM) sent for comment', { commentId });
           this.deps.activity?.increment('dmsSent');
           this.deps.activity?.record('message', 'Private reply sent for comment', { commentId });
@@ -98,7 +105,10 @@ export class CommentAutomationService {
 
     if (wantsPublicReply && rule.publicReplyMessage) {
       try {
-        await this.deps.instagram.replyToComment(commentId, rule.publicReplyMessage);
+        await this.deps.instagram.replyToComment(
+          commentId,
+          renderTemplate(rule.publicReplyMessage, templateVars),
+        );
         logger.info('COMMENT', 'Public reply sent', { commentId });
         this.deps.activity?.increment('publicRepliesSent');
         this.deps.activity?.record('comment', 'Public reply posted', { commentId });

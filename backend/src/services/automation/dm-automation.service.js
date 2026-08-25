@@ -1,15 +1,43 @@
 import { logger } from '../../utils/logger.js';
 import { MetaApiError } from '../meta/meta-api.service.js';
+import { renderTemplate, templateNeedsProfile } from './template.js';
+
+const PROFILE_CACHE_TTL_MS = 60 * 60 * 1000;
+const PROFILE_CACHE_MAX = 5000;
 
 /**
  * Handles `messages` webhook events: echo/self guards, dedup, reply
  * generation (pluggable — see reply-generator.js), throttling, and sending.
+ *
+ * Replies containing {username}/{name} placeholders trigger a profile lookup
+ * for the sender (allowed by Meta since the user has messaged the account),
+ * cached per sender for an hour.
  *
  * @param deps {{ instagram, idempotency, throttle, generator, selfAccountId?, activity? }}
  */
 export class DmAutomationService {
   constructor(deps) {
     this.deps = deps;
+    /** IGSID -> { username, name, at } */
+    this.profileCache = new Map();
+  }
+
+  async lookupProfile(senderId) {
+    const cached = this.profileCache.get(senderId);
+    if (cached && Date.now() - cached.at < PROFILE_CACHE_TTL_MS) return cached;
+    try {
+      const profile = await this.deps.instagram.getUserProfile(senderId);
+      const entry = { username: profile?.username, name: profile?.name, at: Date.now() };
+      this.profileCache.set(senderId, entry);
+      if (this.profileCache.size > PROFILE_CACHE_MAX) {
+        const oldest = this.profileCache.keys().next().value;
+        if (oldest !== undefined) this.profileCache.delete(oldest);
+      }
+      return entry;
+    } catch (err) {
+      logger.warn('AUTOMATION', `Could not fetch sender profile: ${err.message}`);
+      return { username: undefined, name: undefined, at: Date.now() };
+    }
   }
 
   /**
@@ -68,13 +96,20 @@ export class DmAutomationService {
       return;
     }
 
+    // Personalize: only pay for the profile lookup when the reply uses it.
+    let renderedReply = reply;
+    if (templateNeedsProfile(reply)) {
+      const profile = await this.lookupProfile(senderId);
+      renderedReply = renderTemplate(reply, profile);
+    }
+
     if (!this.deps.throttle.allow(senderId)) {
       logger.warn('AUTOMATION', 'DM reply throttled for user', { mid: message.mid });
       return;
     }
 
     try {
-      await this.deps.instagram.sendTextMessage(senderId, reply);
+      await this.deps.instagram.sendTextMessage(senderId, renderedReply);
       logger.info('MESSAGE', 'Response sent', { mid: message.mid });
       this.deps.activity?.increment('dmsSent');
       this.deps.activity?.record('message', 'Automated DM reply sent', { mid: message.mid });

@@ -235,9 +235,14 @@ export default function RulesEditor({ saved, onSave }) {
                   <textarea
                     id={`cr-dm-${rule.key}`}
                     rows={2}
+                    placeholder="Hey @{username}! Thanks for your interest — here are the details."
                     value={rule.dmMessage}
                     onChange={(e) => editCommentRule(rule.key, 'dmMessage', e.target.value)}
                   />
+                  <p className="hint help">
+                    <code>{'{username}'}</code> inserts the commenter's handle — write{' '}
+                    <code>{'Hey @{username}!'}</code> to greet them by name.
+                  </p>
                 </div>
               )}
 
@@ -247,6 +252,7 @@ export default function RulesEditor({ saved, onSave }) {
                   <textarea
                     id={`cr-pub-${rule.key}`}
                     rows={2}
+                    placeholder="@{username} check your DMs! 📩"
                     value={rule.publicReplyMessage}
                     onChange={(e) => editCommentRule(rule.key, 'publicReplyMessage', e.target.value)}
                   />
@@ -314,9 +320,13 @@ export default function RulesEditor({ saved, onSave }) {
                 <textarea
                   id={`dm-reply-${rule.key}`}
                   rows={2}
+                  placeholder="Hi @{username}! Thanks for reaching out."
                   value={rule.reply}
                   onChange={(e) => editDmRule(rule.key, 'reply', e.target.value)}
                 />
+                <p className="hint help">
+                  <code>{'{username}'}</code> inserts the sender's handle automatically.
+                </p>
               </div>
             </div>
           ))}

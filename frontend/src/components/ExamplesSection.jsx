@@ -8,7 +8,7 @@ import {
   MessagesSquare,
   Send,
 } from 'lucide-react';
-import { findMatchingRule } from '../matcher.js';
+import { findMatchingRule, renderPreview } from '../matcher.js';
 
 function Bubble({ side, icon: Icon, tag, text }) {
   return (
@@ -35,17 +35,22 @@ function CommentExample({ rule }) {
         <MessageCircle size={13} aria-hidden="true" />
         Comment on a post · {rule.id}
       </div>
-      <Bubble side="left" icon={MessageCircle} tag="Customer comments" text={trigger} />
+      <Bubble side="left" icon={MessageCircle} tag="Customer @somefan comments" text={trigger} />
       {sendsPublic && rule.publicReplyMessage && (
         <Bubble
           side="right"
           icon={CornerDownRight}
           tag="Automated public reply"
-          text={rule.publicReplyMessage}
+          text={renderPreview(rule.publicReplyMessage)}
         />
       )}
       {sendsDm && rule.dmMessage && (
-        <Bubble side="right" icon={Send} tag="Automated private DM" text={rule.dmMessage} />
+        <Bubble
+          side="right"
+          icon={Send}
+          tag="Automated private DM"
+          text={renderPreview(rule.dmMessage)}
+        />
       )}
     </div>
   );
@@ -61,8 +66,8 @@ function DmExample({ rule }) {
         <Send size={13} aria-hidden="true" />
         Incoming DM · {rule.id}
       </div>
-      <Bubble side="left" icon={Send} tag="Customer sends a DM" text={trigger} />
-      <Bubble side="right" icon={Bot} tag="Automated reply" text={rule.reply} />
+      <Bubble side="left" icon={Send} tag="Customer @somefan sends a DM" text={trigger} />
+      <Bubble side="right" icon={Bot} tag="Automated reply" text={renderPreview(rule.reply)} />
     </div>
   );
 }
@@ -151,7 +156,7 @@ function Simulator({ rules }) {
                 side="right"
                 icon={reply.icon}
                 tag={reply.tag}
-                text={reply.text}
+                text={renderPreview(reply.text)}
               />
             ))}
             {result.replies.length === 0 && (

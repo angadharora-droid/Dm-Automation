@@ -47,6 +47,16 @@ export class InstagramService {
   }
 
   /**
+   * Profile of a message sender by Instagram-scoped ID (IGSID).
+   * Requires instagram_business_basic + instagram_business_manage_messages,
+   * and only works for users who have messaged the account (Meta's consent
+   * rule) — which is exactly the DM-reply case.
+   */
+  getUserProfile(igsid) {
+    return this.api.get(`/${igsid}`, { fields: 'name,username' });
+  }
+
+  /**
    * Recent posts (GET /<IG_ID>/media). All fields available with
    * instagram_business_basic; thumbnail_url is only present on VIDEO media.
    */
