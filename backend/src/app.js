@@ -8,6 +8,7 @@ import { getConfig } from './config/env.js';
 import { createAuthRouter } from './routes/auth.routes.js';
 import { createDashboardRouter } from './routes/dashboard.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
+import { createPrivacyRouter } from './routes/privacy.routes.js';
 import { createInstagramRouter } from './routes/instagram.routes.js';
 import { createWebhookRouter } from './routes/webhook.routes.js';
 import { CommentAutomationService } from './services/automation/comment-automation.service.js';
@@ -116,6 +117,7 @@ export function createApp(services) {
   );
 
   app.use(createHealthRouter());
+  app.use(createPrivacyRouter());
   app.use('/api/auth', createAuthRouter());
   app.use('/webhooks', createWebhookRouter(services));
   app.use('/api/instagram', createInstagramRouter(services.instagramService));
