@@ -7,6 +7,8 @@ export function createDashboardRouter(deps) {
   const controller = createDashboardController(deps);
   router.get('/overview', controller.overview);
   router.get('/activity', controller.activity);
+  router.get('/posts', controller.posts);
+  router.get('/analytics', controller.analytics);
   router.get('/rules', controller.rules);
   router.put('/rules', controller.updateRules);
   return router;

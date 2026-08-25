@@ -9,7 +9,11 @@ import { requireAdminKey } from './instagram.controller.js';
  * booleans only — secret values never leave the server. Works with both the
  * Mongo-backed and in-memory activity log (results are awaited either way).
  */
+const POSTS_CACHE_MS = 60_000;
+
 export function createDashboardController(deps) {
+  let postsCache = null; // { at, data }
+
   return {
     /** GET /api/dashboard/overview */
     async overview(req, res) {
@@ -50,6 +54,52 @@ export function createDashboardController(deps) {
       } catch (err) {
         logger.error('DASHBOARD', `Failed to load activity: ${err.message}`);
         res.status(500).json({ error: 'Failed to load activity' });
+      }
+    },
+
+    /**
+     * GET /api/dashboard/posts — recent Instagram posts with their IDs (for
+     * scoping rules to specific posts). Cached for 60s to spare Meta rate
+     * limits while the dashboard is open.
+     */
+    async posts(req, res) {
+      if (!requireAdminKey(req, res)) return;
+      if (postsCache && Date.now() - postsCache.at < POSTS_CACHE_MS) {
+        res.json({ posts: postsCache.data, cached: true });
+        return;
+      }
+      try {
+        const result = await deps.instagram.getRecentMedia(24);
+        const posts = (result?.data ?? []).map((media) => ({
+          id: media.id,
+          caption: media.caption ?? '',
+          mediaType: media.media_type,
+          mediaUrl: media.media_url,
+          thumbnailUrl: media.thumbnail_url,
+          permalink: media.permalink,
+          timestamp: media.timestamp,
+          likeCount: media.like_count,
+          commentsCount: media.comments_count,
+        }));
+        postsCache = { at: Date.now(), data: posts };
+        res.json({ posts, cached: false });
+      } catch (err) {
+        logger.error('DASHBOARD', `Failed to load posts: ${err.message}`);
+        res.status(502).json({ error: 'Failed to load posts from the Meta API' });
+      }
+    },
+
+    /** GET /api/dashboard/analytics?days=14 — per-day event counts. */
+    async analytics(req, res) {
+      if (!requireAdminKey(req, res)) return;
+      const daysRaw = Number.parseInt(String(req.query.days ?? ''), 10);
+      const days = Number.isFinite(daysRaw) ? Math.min(Math.max(daysRaw, 1), 30) : 14;
+      try {
+        const daily = await deps.activity.getDailyStats(days);
+        res.json({ days: daily, totals: await deps.activity.getCounters() });
+      } catch (err) {
+        logger.error('DASHBOARD', `Failed to load analytics: ${err.message}`);
+        res.status(500).json({ error: 'Failed to load analytics' });
       }
     },
 

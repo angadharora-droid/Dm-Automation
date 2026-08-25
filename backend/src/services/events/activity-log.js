@@ -25,6 +25,20 @@ export const EMPTY_COUNTERS = Object.freeze({
   errors: 0,
 });
 
+/** UTC day key, e.g. "2026-08-25". */
+export function dayKey(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+/** Last `days` UTC day keys, oldest first, ending today. */
+export function lastDayKeys(days, now = new Date()) {
+  const keys = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    keys.push(dayKey(new Date(now.getTime() - i * 24 * 60 * 60 * 1000)));
+  }
+  return keys;
+}
+
 export class ActivityLog {
   constructor(maxEntries = 200) {
     this.startedAt = new Date().toISOString();
@@ -32,6 +46,8 @@ export class ActivityLog {
     this.nextId = 1;
     this.entries = [];
     this.counters = { ...EMPTY_COUNTERS };
+    /** date key -> partial counters (kept ~30 days). */
+    this.daily = new Map();
   }
 
   record(type, message, meta) {
@@ -48,7 +64,26 @@ export class ActivityLog {
   }
 
   increment(counter) {
-    if (counter in this.counters) this.counters[counter] += 1;
+    if (!(counter in this.counters)) return;
+    this.counters[counter] += 1;
+    const key = dayKey();
+    const bucket = this.daily.get(key) ?? {};
+    bucket[counter] = (bucket[counter] ?? 0) + 1;
+    this.daily.set(key, bucket);
+    while (this.daily.size > 31) {
+      const oldest = this.daily.keys().next().value;
+      if (oldest === undefined) break;
+      this.daily.delete(oldest);
+    }
+  }
+
+  /** Per-day counters for the last `days` days (zero-filled), oldest first. */
+  getDailyStats(days = 14) {
+    return lastDayKeys(days).map((date) => ({
+      date,
+      ...EMPTY_COUNTERS,
+      ...(this.daily.get(date) ?? {}),
+    }));
   }
 
   /** Newest first. */

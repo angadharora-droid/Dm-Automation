@@ -10,8 +10,10 @@ import {
   saveSession,
 } from './api.js';
 import ActivitySection from './components/ActivitySection.jsx';
+import AnalyticsView from './components/AnalyticsView.jsx';
 import AuthCard from './components/AuthCard.jsx';
 import HomeView from './components/HomeView.jsx';
+import PostsView from './components/PostsView.jsx';
 import RulesEditor from './components/RulesEditor.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import StatusSection from './components/StatusSection.jsx';
@@ -22,6 +24,8 @@ const REFRESH_MS = 10_000;
 const PAGE_TITLES = {
   activity: { title: 'Activity', sub: 'Every webhook event and automated action, as it happens.' },
   automations: { title: 'Automations', sub: 'What your customers experience, and the rules behind it.' },
+  posts: { title: 'Posts', sub: 'Your recent Instagram posts and their IDs.' },
+  analytics: { title: 'Analytics', sub: 'What the automation handled over time.' },
   setup: { title: 'Setup', sub: 'Connection status and server configuration.' },
 };
 
@@ -97,6 +101,12 @@ export default function App() {
     setOverview(null);
     setView('home');
     setAuthError('');
+  }, []);
+
+  /** Bound fetcher for self-loading views (Posts, Analytics). */
+  const fetchApi = useCallback((path) => {
+    const { backendUrl, ...auth } = sessionRef.current;
+    return apiGet(backendUrl, auth, path);
   }, []);
 
   const saveRules = useCallback(
@@ -199,6 +209,10 @@ export default function App() {
           )}
 
           {view === 'automations' && rules && <RulesEditor saved={rules} onSave={saveRules} />}
+
+          {view === 'posts' && <PostsView fetchApi={fetchApi} />}
+
+          {view === 'analytics' && <AnalyticsView fetchApi={fetchApi} />}
 
           {view === 'setup' && <StatusSection overview={overview} />}
         </div>

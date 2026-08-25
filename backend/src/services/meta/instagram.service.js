@@ -46,6 +46,18 @@ export class InstagramService {
     });
   }
 
+  /**
+   * Recent posts (GET /<IG_ID>/media). All fields available with
+   * instagram_business_basic; thumbnail_url is only present on VIDEO media.
+   */
+  getRecentMedia(limit = 24) {
+    return this.api.get(`${this.accountPath}/media`, {
+      fields:
+        'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count',
+      limit,
+    });
+  }
+
   /** Public reply to a comment. Requires instagram_business_manage_comments. */
   replyToComment(commentId, message) {
     return this.api.post(`/${commentId}/replies`, {

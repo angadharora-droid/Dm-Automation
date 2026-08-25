@@ -1,4 +1,4 @@
-import { EMPTY_COUNTERS } from '../events/activity-log.js';
+import { dayKey, EMPTY_COUNTERS, lastDayKeys } from '../events/activity-log.js';
 import { logger } from '../../utils/logger.js';
 
 const COUNTERS_ID = 'counters';
@@ -24,6 +24,7 @@ export class MongoActivityLog {
     this.startedAt = new Date().toISOString();
     this.entriesCollection = db.collection('activity_log');
     this.countersCollection = db.collection('dashboard_counters');
+    this.dailyCollection = db.collection('daily_stats');
     this.entryTtlSeconds = entryTtlSeconds;
   }
 
@@ -31,6 +32,10 @@ export class MongoActivityLog {
     await this.entriesCollection.createIndex(
       { timestamp: 1 },
       { expireAfterSeconds: this.entryTtlSeconds, name: 'ttl_timestamp' },
+    );
+    await this.dailyCollection.createIndex(
+      { day: 1 },
+      { expireAfterSeconds: 90 * 24 * 60 * 60, name: 'ttl_day' },
     );
     return this;
   }
@@ -46,6 +51,28 @@ export class MongoActivityLog {
     this.countersCollection
       .updateOne({ _id: COUNTERS_ID }, { $inc: { [counter]: 1 } }, { upsert: true })
       .catch((err) => logger.error('DB', `Failed to increment counter: ${err.message}`));
+    this.dailyCollection
+      .updateOne(
+        { _id: dayKey() },
+        { $inc: { [counter]: 1 }, $setOnInsert: { day: new Date() } },
+        { upsert: true },
+      )
+      .catch((err) => logger.error('DB', `Failed to increment daily stat: ${err.message}`));
+  }
+
+  /** Per-day counters for the last `days` days (zero-filled), oldest first. */
+  async getDailyStats(days = 14) {
+    const keys = lastDayKeys(days);
+    const docs = await this.dailyCollection.find({ _id: { $in: keys } }).toArray();
+    const byDay = new Map(docs.map((doc) => [doc._id, doc]));
+    return keys.map((date) => {
+      const doc = byDay.get(date) ?? {};
+      const bucket = { date, ...EMPTY_COUNTERS };
+      for (const key of Object.keys(EMPTY_COUNTERS)) {
+        if (typeof doc[key] === 'number') bucket[key] = doc[key];
+      }
+      return bucket;
+    });
   }
 
   /** Newest first. */

@@ -1,10 +1,12 @@
-import { House, Inbox, LogOut, Settings, Zap } from 'lucide-react';
+import { ChartColumn, House, Image, Inbox, LogOut, Settings, Zap } from 'lucide-react';
 import BrandGlyph from './BrandGlyph.jsx';
 
 export const NAV_ITEMS = [
   { id: 'home', label: 'Home', icon: House },
   { id: 'activity', label: 'Activity', icon: Inbox },
   { id: 'automations', label: 'Automations', icon: Zap },
+  { id: 'posts', label: 'Posts', icon: Image },
+  { id: 'analytics', label: 'Analytics', icon: ChartColumn },
   { id: 'setup', label: 'Setup', icon: Settings },
 ];
 

@@ -93,7 +93,17 @@ export function createApp(services) {
 
   app.set('trust proxy', 1); // Railway terminates TLS in front of the app
   app.disable('x-powered-by');
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+          // Allow the dashboard's Posts page to show Instagram CDN thumbnails.
+          'img-src': ["'self'", 'data:', 'https:'],
+        },
+      },
+    }),
+  );
   app.use(cors({ origin: config.allowedOrigins.length > 0 ? config.allowedOrigins : false }));
   app.use(
     express.json({
@@ -114,6 +124,7 @@ export function createApp(services) {
     createDashboardRouter({
       activity: services.activity,
       ruleStore: services.ruleStore,
+      instagram: services.instagramService,
       databaseConnected: services.databaseConnected,
     }),
   );

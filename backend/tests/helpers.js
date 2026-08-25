@@ -34,6 +34,20 @@ export function signBody(body, secret = TEST_APP_SECRET) {
 export function createInstagramServiceMock() {
   return {
     getAccountInfo: vi.fn(async () => ({ user_id: SELF_ACCOUNT_ID, username: 'testaccount' })),
+    getRecentMedia: vi.fn(async () => ({
+      data: [
+        {
+          id: '17900000000000001',
+          caption: 'Launch day! Comment PRICE for details',
+          media_type: 'IMAGE',
+          media_url: 'https://scontent.example/img1.jpg',
+          permalink: 'https://www.instagram.com/p/abc123/',
+          timestamp: '2026-08-20T10:00:00+0000',
+          like_count: 42,
+          comments_count: 7,
+        },
+      ],
+    })),
     replyToComment: vi.fn(async () => ({ id: 'new-comment-id' })),
     sendPrivateReplyToComment: vi.fn(async () => ({ recipient_id: 'r', message_id: 'm' })),
     sendTextMessage: vi.fn(async () => ({ recipient_id: 'r', message_id: 'm' })),
