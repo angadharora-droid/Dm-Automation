@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { apiGet, loadSession, normalizeBaseUrl, saveSession } from './api.js';
+import {
+  apiGet,
+  clearSessionAuth,
+  loadSession,
+  login,
+  normalizeBaseUrl,
+  saveSession,
+} from './api.js';
 import ActivitySection from './components/ActivitySection.jsx';
 import AuthCard from './components/AuthCard.jsx';
 import ExamplesSection from './components/ExamplesSection.jsx';
@@ -36,11 +43,11 @@ export default function App() {
   sessionRef.current = session;
 
   const refresh = useCallback(async () => {
-    const { backendUrl, adminKey } = sessionRef.current;
+    const { backendUrl, ...auth } = sessionRef.current;
     const [overviewData, activityData, rulesData] = await Promise.all([
-      apiGet(backendUrl, adminKey, '/api/dashboard/overview'),
-      apiGet(backendUrl, adminKey, '/api/dashboard/activity?limit=50'),
-      apiGet(backendUrl, adminKey, '/api/dashboard/rules'),
+      apiGet(backendUrl, auth, '/api/dashboard/overview'),
+      apiGet(backendUrl, auth, '/api/dashboard/activity?limit=50'),
+      apiGet(backendUrl, auth, '/api/dashboard/rules'),
     ]);
     setOverview(overviewData);
     setActivity(activityData.entries ?? []);
@@ -49,22 +56,32 @@ export default function App() {
   }, []);
 
   const connect = useCallback(
-    async ({ adminKey, backendUrl }) => {
-      const next = { adminKey: adminKey.trim(), backendUrl: normalizeBaseUrl(backendUrl) };
-      if (!next.adminKey) {
-        setAuthError('Enter the admin key first.');
-        return;
-      }
+    async ({ mode, username, password, adminKey, backendUrl }) => {
+      const base = normalizeBaseUrl(backendUrl ?? sessionRef.current.backendUrl);
       setPhase('connecting');
-      setSession(next);
-      sessionRef.current = next;
       try {
+        let next;
+        if (mode === 'key') {
+          const key = (adminKey ?? '').trim();
+          if (!key) throw new Error('Enter the admin key first.');
+          next = { mode: 'key', adminKey: key, token: '', backendUrl: base };
+        } else if (mode === 'token') {
+          // Restoring a stored session token after a page reload.
+          next = { mode: 'password', adminKey: '', token: sessionRef.current.token, backendUrl: base };
+        } else {
+          const result = await login(base, (username ?? '').trim(), password ?? '');
+          next = { mode: 'password', adminKey: '', token: result.token, backendUrl: base };
+        }
+        setSession(next);
+        sessionRef.current = next;
         await refresh();
         saveSession(next);
         setPhase('connected');
         setAuthError('');
       } catch (err) {
-        saveSession({ adminKey: '', backendUrl: next.backendUrl });
+        const cleared = clearSessionAuth({ ...sessionRef.current, backendUrl: base });
+        setSession(cleared);
+        sessionRef.current = cleared;
         setPhase('idle');
         setAuthError(err.message);
       }
@@ -73,8 +90,9 @@ export default function App() {
   );
 
   const disconnect = useCallback(() => {
-    saveSession({ adminKey: '', backendUrl: sessionRef.current.backendUrl });
-    setSession({ adminKey: '', backendUrl: sessionRef.current.backendUrl });
+    const cleared = clearSessionAuth(sessionRef.current);
+    setSession(cleared);
+    sessionRef.current = cleared;
     setPhase('idle');
     setOverview(null);
     setView('home');
@@ -105,10 +123,12 @@ export default function App() {
     return () => clearInterval(timer);
   }, [phase, refresh]);
 
-  // Auto-connect when a key survived in sessionStorage.
+  // Auto-connect when credentials survived in sessionStorage.
   useEffect(() => {
     const stored = loadSession();
-    if (stored.adminKey) connect(stored);
+    sessionRef.current = stored;
+    if (stored.mode === 'key' && stored.adminKey) connect({ mode: 'key', adminKey: stored.adminKey, backendUrl: stored.backendUrl });
+    else if (stored.token) connect({ mode: 'token', backendUrl: stored.backendUrl });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 

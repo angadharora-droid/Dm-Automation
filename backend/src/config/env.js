@@ -32,6 +32,9 @@ export function getConfig() {
       '',
     ),
     adminApiKey: emptyToUndefined(env.ADMIN_API_KEY),
+    adminUsername: emptyToUndefined(env.ADMIN_USERNAME),
+    adminPassword: emptyToUndefined(env.ADMIN_PASSWORD),
+    sessionSecret: emptyToUndefined(env.SESSION_SECRET),
     /** MongoDB connection string; unset = in-memory fallback stores. */
     mongodbUri: emptyToUndefined(env.MONGODB_URI),
     mongodbDbName: emptyToUndefined(env.MONGODB_DB) ?? 'instagram_automation',

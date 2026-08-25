@@ -15,6 +15,8 @@ function secretValues() {
     process.env.INSTAGRAM_ACCESS_TOKEN,
     process.env.META_VERIFY_TOKEN,
     process.env.ADMIN_API_KEY,
+    process.env.ADMIN_PASSWORD,
+    process.env.SESSION_SECRET,
     process.env.MONGODB_URI,
   ].filter((value) => Boolean(value && value.length >= 4));
 }

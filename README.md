@@ -128,7 +128,9 @@ All variables live on the **backend** (copy `backend/.env.example` to `backend/.
 | `MONGODB_DB` | no | Database name, default `instagram_automation`. |
 | `META_API_VERSION` | no | Graph API version, default `v25.0`. |
 | `META_GRAPH_BASE_URL` | no | Default `https://graph.instagram.com` (the Instagram Login API host). |
-| `ADMIN_API_KEY` | no | Enables the dashboard/admin API when set; those endpoints return 503 when unset. Choose a long random string. |
+| `ADMIN_USERNAME` + `ADMIN_PASSWORD` | recommended | Enables the dashboard's login ID + password sign-in (`POST /api/auth/login` issues a signed 12-hour session token; per-IP attempt throttling). |
+| `ADMIN_API_KEY` | no | Alternative/additional admin auth: the `x-admin-key` header, for curl/scripts and the dashboard's "admin API key" sign-in option. Admin endpoints return 503 when no auth method is configured. |
+| `SESSION_SECRET` | no | Signs login session tokens. Defaults to a value derived from `META_APP_SECRET`. |
 | `LOG_LEVEL` | no | `debug` / `info` (default) / `warn` / `error`. |
 | `REQUEST_TIMEOUT_MS` | no | Outbound Meta API timeout, default 10000. |
 | `WEBHOOK_BODY_LIMIT` | no | Request body limit, default `1mb`. |
@@ -182,7 +184,9 @@ Implement e.g. `AnthropicReplyGenerator` and swap it for `RuleBasedReplyGenerato
 
 ## Admin dashboard (React)
 
-Open `https://<your-domain>/dashboard` and enter your `ADMIN_API_KEY`. It shows configuration
+Open `https://<your-domain>/dashboard` and sign in with your `ADMIN_USERNAME` +
+`ADMIN_PASSWORD` (or switch to the admin API key option). Sign-in exchanges the password for a
+signed 12-hour session token — the password never touches browser storage. It shows configuration
 status (booleans only — never secret values), storage mode (MongoDB vs in-memory), counters,
 a live activity feed (auto-refreshes every 10s), and the loaded rules. See
 [frontend/README.md](frontend/README.md) for dashboard development and separate hosting.

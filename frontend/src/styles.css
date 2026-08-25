@@ -490,6 +490,20 @@ code {
 .auth-brand h1 { font-family: var(--font-display); font-size: 21px; font-weight: 800; margin: 0; letter-spacing: -0.02em; }
 .auth-brand p { margin: 0; }
 
+.password-wrap { display: flex; gap: 8px; }
+.password-wrap input { flex: 1; }
+.password-wrap .password-toggle { flex: none; }
+
+.auth-alt {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
 .spin { animation: spin 900ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

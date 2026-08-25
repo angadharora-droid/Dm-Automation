@@ -1,45 +1,85 @@
 /**
- * Dashboard API client. Talks to the backend's /api/dashboard/* endpoints,
- * authenticated with the x-admin-key header.
+ * Dashboard API client.
  *
- * `base` is '' when the dashboard is served by the backend itself (same
- * origin); when hosted separately it is the backend's URL, and that page's
- * origin must be listed in the backend's ALLOWED_ORIGINS.
+ * Auth is either a session token from POST /api/auth/login (username/password
+ * sign-in — the password itself is never stored) or the raw admin API key.
+ * `base` is '' when the dashboard is served by the backend itself; when hosted
+ * separately it is the backend's URL and that page's origin must be listed in
+ * the backend's ALLOWED_ORIGINS.
  */
-export async function apiGet(base, adminKey, path) {
-  const res = await fetch(base + path, { headers: { 'x-admin-key': adminKey } });
-  if (res.status === 401) throw new Error('Invalid admin key.');
-  if (res.status === 503) {
-    throw new Error('Admin endpoints are disabled on the server (ADMIN_API_KEY not set).');
+
+function authHeaders(auth) {
+  if (auth?.mode === 'key' && auth.adminKey) return { 'x-admin-key': auth.adminKey };
+  if (auth?.token) return { authorization: `Bearer ${auth.token}` };
+  return {};
+}
+
+async function parseError(res, fallback) {
+  try {
+    const body = await res.json();
+    if (body?.error) return body.error;
+  } catch {
+    /* non-JSON error body */
   }
+  return fallback;
+}
+
+export async function apiGet(base, auth, path) {
+  const res = await fetch(base + path, { headers: authHeaders(auth) });
+  if (res.status === 401) {
+    throw new Error(
+      auth?.mode === 'key' ? 'Invalid admin key.' : 'Session expired — please sign in again.',
+    );
+  }
+  if (res.status === 503) throw new Error(await parseError(res, 'Admin access is disabled on the server.'));
   if (!res.ok) throw new Error(`Request failed (${res.status}).`);
   return res.json();
 }
 
-const KEY_STORAGE = 'ig-automation-admin-key';
-const BASE_STORAGE = 'ig-automation-backend-url';
+/** Exchanges username/password for a session token. */
+export async function login(base, username, password) {
+  const res = await fetch(`${base}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    throw new Error(await parseError(res, `Sign-in failed (${res.status}).`));
+  }
+  return res.json(); // { token, expiresAt }
+}
+
+const STORAGE_KEY = 'ig-automation-session';
 
 /* sessionStorage can throw in private browsing modes — degrade gracefully. */
 export function loadSession() {
   try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
     return {
-      adminKey: sessionStorage.getItem(KEY_STORAGE) || '',
-      backendUrl: sessionStorage.getItem(BASE_STORAGE) || '',
+      mode: parsed.mode === 'key' ? 'key' : 'password',
+      adminKey: parsed.adminKey || '',
+      token: parsed.token || '',
+      backendUrl: parsed.backendUrl || '',
     };
   } catch {
-    return { adminKey: '', backendUrl: '' };
+    return { mode: 'password', adminKey: '', token: '', backendUrl: '' };
   }
 }
 
-export function saveSession({ adminKey, backendUrl }) {
+export function saveSession(session) {
   try {
-    if (adminKey) sessionStorage.setItem(KEY_STORAGE, adminKey);
-    else sessionStorage.removeItem(KEY_STORAGE);
-    if (backendUrl) sessionStorage.setItem(BASE_STORAGE, backendUrl);
-    else sessionStorage.removeItem(BASE_STORAGE);
+    const { mode, adminKey, token, backendUrl } = session;
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ mode, adminKey, token, backendUrl }));
   } catch {
-    /* key just won't persist across reloads */
+    /* session just won't persist across reloads */
   }
+}
+
+export function clearSessionAuth(session) {
+  const next = { ...session, adminKey: '', token: '' };
+  saveSession(next);
+  return next;
 }
 
 export function normalizeBaseUrl(value) {

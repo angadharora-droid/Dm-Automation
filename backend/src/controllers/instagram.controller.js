@@ -1,26 +1,40 @@
 import { getConfig } from '../config/env.js';
+import { getSessionSecret, safeEqual, verifySessionToken } from '../services/auth/session.js';
 import { MetaApiError } from '../services/meta/meta-api.service.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * Admin helper endpoints for setup and troubleshooting. Gated behind
- * ADMIN_API_KEY (x-admin-key header); disabled entirely when the key is unset.
+ * Admin auth guard for dashboard/helper endpoints. Accepts either:
+ * - the ADMIN_API_KEY via the x-admin-key header (scripts, curl), or
+ * - a session token from POST /api/auth/login via Authorization: Bearer
+ *   (dashboard username/password sign-in).
+ * Disabled entirely (503) when neither auth method is configured.
  * Responses never include tokens or internal error details.
  */
-
 export function requireAdminKey(req, res) {
   const config = getConfig();
-  if (!config.adminApiKey) {
-    res
-      .status(503)
-      .json({ error: 'Admin endpoints are disabled. Set ADMIN_API_KEY to enable them.' });
+  const passwordLoginEnabled = Boolean(config.adminUsername && config.adminPassword);
+  if (!config.adminApiKey && !passwordLoginEnabled) {
+    res.status(503).json({
+      error:
+        'Admin endpoints are disabled. Set ADMIN_API_KEY and/or ADMIN_USERNAME + ADMIN_PASSWORD.',
+    });
     return false;
   }
-  if (req.header('x-admin-key') !== config.adminApiKey) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return false;
+
+  const apiKey = req.header('x-admin-key');
+  if (config.adminApiKey && apiKey && safeEqual(apiKey, config.adminApiKey)) {
+    return true;
   }
-  return true;
+
+  const authorization = req.header('authorization');
+  if (passwordLoginEnabled && authorization?.startsWith('Bearer ')) {
+    const session = verifySessionToken(authorization.slice(7), getSessionSecret(config));
+    if (session) return true;
+  }
+
+  res.status(401).json({ error: 'Unauthorized' });
+  return false;
 }
 
 export function createInstagramController(instagram) {

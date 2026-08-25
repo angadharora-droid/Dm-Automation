@@ -20,6 +20,9 @@ export function setBaseTestEnv() {
   process.env.LOG_LEVEL = 'error';
   delete process.env.AUTOMATION_RULES;
   delete process.env.ADMIN_API_KEY;
+  delete process.env.ADMIN_USERNAME;
+  delete process.env.ADMIN_PASSWORD;
+  delete process.env.SESSION_SECRET;
   delete process.env.MONGODB_URI;
 }
 

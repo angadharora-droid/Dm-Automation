@@ -5,6 +5,7 @@ import express from 'express';
 import helmet from 'helmet';
 import { loadAutomationConfig } from './config/automation.config.js';
 import { getConfig } from './config/env.js';
+import { createAuthRouter } from './routes/auth.routes.js';
 import { createDashboardRouter } from './routes/dashboard.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
 import { createInstagramRouter } from './routes/instagram.routes.js';
@@ -99,6 +100,7 @@ export function createApp(services) {
   );
 
   app.use(createHealthRouter());
+  app.use('/api/auth', createAuthRouter());
   app.use('/webhooks', createWebhookRouter(services));
   app.use('/api/instagram', createInstagramRouter(services.instagramService));
   app.use(
