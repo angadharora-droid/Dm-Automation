@@ -1,13 +1,30 @@
-function Rule({ title, keywords, lines }) {
+import { CornerDownRight, Send, SlidersHorizontal } from 'lucide-react';
+
+function Rule({ title, action, keywords, lines }) {
   return (
     <div className="rule">
-      <strong>{title}</strong>
-      <div className="kw">keywords: {keywords.join(', ')}</div>
-      {lines.filter(Boolean).map((line) => (
-        <div key={line} className="msg">
-          {line}
-        </div>
-      ))}
+      <div className="rule-head">
+        <strong>{title}</strong>
+        {action && <span className="action-badge">{action.replaceAll('_', ' ')}</span>}
+      </div>
+      <div className="kw-chips">
+        {keywords.map((keyword) => (
+          <span key={keyword} className="kw-chip">
+            {keyword}
+          </span>
+        ))}
+      </div>
+      {lines
+        .filter((line) => line?.text)
+        .map((line) => {
+          const Icon = line.icon;
+          return (
+            <div key={line.text} className="msg">
+              <Icon size={13} aria-hidden="true" />
+              <span>{line.text}</span>
+            </div>
+          );
+        })}
     </div>
   );
 }
@@ -15,20 +32,35 @@ function Rule({ title, keywords, lines }) {
 export default function RulesSection({ rules }) {
   return (
     <section className="card">
-      <h2>Automation rules</h2>
+      <div className="card-head">
+        <h2>
+          <SlidersHorizontal size={17} aria-hidden="true" />
+          Automation rules
+        </h2>
+        <span className="hint">Configured via AUTOMATION_RULES</span>
+      </div>
       {(rules.commentRules ?? []).map((rule) => (
         <Rule
           key={rule.id}
-          title={`Comment rule: ${rule.id} (${rule.action})`}
+          title={rule.id}
+          action={rule.action}
           keywords={rule.keywords}
           lines={[
-            rule.dmMessage ? `DM: ${rule.dmMessage}` : '',
-            rule.publicReplyMessage ? `Public reply: ${rule.publicReplyMessage}` : '',
+            rule.publicReplyMessage
+              ? { icon: CornerDownRight, text: `Public reply: ${rule.publicReplyMessage}` }
+              : null,
+            rule.dmMessage ? { icon: Send, text: `DM: ${rule.dmMessage}` } : null,
           ]}
         />
       ))}
       {(rules.dmRules ?? []).map((rule) => (
-        <Rule key={rule.id} title={`DM rule: ${rule.id}`} keywords={rule.keywords} lines={[`Reply: ${rule.reply}`]} />
+        <Rule
+          key={rule.id}
+          title={rule.id}
+          action="dm reply"
+          keywords={rule.keywords}
+          lines={[{ icon: Send, text: `Reply: ${rule.reply}` }]}
+        />
       ))}
       <p className="hint">
         {rules.dmFallbackReply

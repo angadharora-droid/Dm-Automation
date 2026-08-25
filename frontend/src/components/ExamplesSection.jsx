@@ -1,11 +1,23 @@
 import { useState } from 'react';
+import {
+  Bot,
+  CheckCircle2,
+  CornerDownRight,
+  FlaskConical,
+  MessageCircle,
+  MessagesSquare,
+  Send,
+} from 'lucide-react';
 import { findMatchingRule } from '../matcher.js';
 
-function Bubble({ side, tag, text }) {
+function Bubble({ side, icon: Icon, tag, text }) {
   return (
     <div className={`bubble-row ${side}`}>
       <div className={`bubble ${side}`}>
-        <div className="bubble-tag">{tag}</div>
+        <div className="bubble-tag">
+          <Icon size={12} aria-hidden="true" />
+          {tag}
+        </div>
         {text}
       </div>
     </div>
@@ -19,13 +31,21 @@ function CommentExample({ rule }) {
   const sendsPublic = rule.action === 'public_reply' || rule.action === 'private_and_public_reply';
   return (
     <div className="example">
-      <div className="example-title">Comment on a post → automated reply ({rule.id})</div>
-      <Bubble side="left" tag="💬 Customer comments" text={trigger} />
+      <div className="example-title">
+        <MessageCircle size={13} aria-hidden="true" />
+        Comment on a post · {rule.id}
+      </div>
+      <Bubble side="left" icon={MessageCircle} tag="Customer comments" text={trigger} />
       {sendsPublic && rule.publicReplyMessage && (
-        <Bubble side="right" tag="↩️ Automated public reply" text={rule.publicReplyMessage} />
+        <Bubble
+          side="right"
+          icon={CornerDownRight}
+          tag="Automated public reply"
+          text={rule.publicReplyMessage}
+        />
       )}
       {sendsDm && rule.dmMessage && (
-        <Bubble side="right" tag="✉️ Automated private DM" text={rule.dmMessage} />
+        <Bubble side="right" icon={Send} tag="Automated private DM" text={rule.dmMessage} />
       )}
     </div>
   );
@@ -37,9 +57,12 @@ function DmExample({ rule }) {
   const trigger = keyword.includes(' ') ? `Hi, ${keyword}?` : `Hi, what is the ${keyword}?`;
   return (
     <div className="example">
-      <div className="example-title">Incoming DM → automated reply ({rule.id})</div>
-      <Bubble side="left" tag="✉️ Customer sends a DM" text={trigger} />
-      <Bubble side="right" tag="🤖 Automated reply" text={rule.reply} />
+      <div className="example-title">
+        <Send size={13} aria-hidden="true" />
+        Incoming DM · {rule.id}
+      </div>
+      <Bubble side="left" icon={Send} tag="Customer sends a DM" text={trigger} />
+      <Bubble side="right" icon={Bot} tag="Automated reply" text={rule.reply} />
     </div>
   );
 }
@@ -60,11 +83,11 @@ function Simulator({ rules }) {
             replies: [
               rule.publicReplyMessage &&
               (rule.action === 'public_reply' || rule.action === 'private_and_public_reply')
-                ? { tag: '↩️ Public reply', text: rule.publicReplyMessage }
+                ? { icon: CornerDownRight, tag: 'Public reply', text: rule.publicReplyMessage }
                 : null,
               rule.dmMessage &&
               (rule.action === 'private_reply' || rule.action === 'private_and_public_reply')
-                ? { tag: '✉️ Private DM', text: rule.dmMessage }
+                ? { icon: Send, tag: 'Private DM', text: rule.dmMessage }
                 : null,
             ].filter(Boolean),
           }
@@ -73,47 +96,76 @@ function Simulator({ rules }) {
       const rule = findMatchingRule(trimmed, rules.dmRules ?? []);
       const fallback = rules.dmFallbackReply;
       result = rule
-        ? { matched: rule, replies: [{ tag: '🤖 Auto-reply', text: rule.reply }] }
+        ? { matched: rule, replies: [{ icon: Bot, tag: 'Auto-reply', text: rule.reply }] }
         : fallback
-          ? { matched: 'fallback', replies: [{ tag: '🤖 Fallback reply', text: fallback }] }
+          ? {
+              matched: 'fallback',
+              replies: [{ icon: Bot, tag: 'Fallback reply', text: fallback }],
+            }
           : { matched: null, replies: [] };
     }
   }
 
   return (
-    <div className="example simulator">
-      <div className="example-title">Try it — type a message and see what the bot would do</div>
-      <div className="row">
-        <select value={channel} onChange={(event) => setChannel(event.target.value)}>
-          <option value="comment">Comment on a post</option>
-          <option value="dm">Incoming DM</option>
-        </select>
-        <input
-          placeholder={channel === 'comment' ? 'e.g. What is the PRICE?' : 'e.g. Hi, how much is it?'}
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-        />
+    <div className="example">
+      <div className="example-title">
+        <FlaskConical size={13} aria-hidden="true" />
+        Try it — type a message and see what the bot would do
       </div>
-      {result && (
-        <div className="sim-result">
-          <Bubble
-            side="left"
-            tag={channel === 'comment' ? '💬 Customer comments' : '✉️ Customer sends a DM'}
-            text={trimmed}
-          />
-          {result.replies.map((reply) => (
-            <Bubble key={reply.tag} side="right" tag={reply.tag} text={reply.text} />
-          ))}
-          {result.replies.length === 0 && (
-            <p className="hint">No rule matches — the bot stays silent for this message.</p>
-          )}
-          {result.matched && result.matched !== 'fallback' && (
-            <p className="hint">
-              Matched rule: <code>{result.matched.id}</code>
-            </p>
-          )}
+      <div className="sim-controls">
+        <div className="field" style={{ margin: 0 }}>
+          <label htmlFor="sim-channel">Channel</label>
+          <select
+            id="sim-channel"
+            value={channel}
+            onChange={(event) => setChannel(event.target.value)}
+          >
+            <option value="comment">Comment on a post</option>
+            <option value="dm">Incoming DM</option>
+          </select>
         </div>
-      )}
+        <div className="field" style={{ margin: 0 }}>
+          <label htmlFor="sim-text">Message</label>
+          <input
+            id="sim-text"
+            placeholder={
+              channel === 'comment' ? 'e.g. What is the PRICE?' : 'e.g. Hi, how much is it?'
+            }
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+          />
+        </div>
+      </div>
+      <div aria-live="polite">
+        {result && (
+          <div className="sim-result">
+            <Bubble
+              side="left"
+              icon={channel === 'comment' ? MessageCircle : Send}
+              tag={channel === 'comment' ? 'Customer comments' : 'Customer sends a DM'}
+              text={trimmed}
+            />
+            {result.replies.map((reply) => (
+              <Bubble
+                key={reply.tag}
+                side="right"
+                icon={reply.icon}
+                tag={reply.tag}
+                text={reply.text}
+              />
+            ))}
+            {result.replies.length === 0 && (
+              <p className="hint">No rule matches — the bot stays silent for this message.</p>
+            )}
+            {result.matched && result.matched !== 'fallback' && (
+              <p className="hint matched-note">
+                <CheckCircle2 size={13} aria-hidden="true" />
+                Matched rule: <code>{result.matched.id}</code>
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -121,11 +173,13 @@ function Simulator({ rules }) {
 export default function ExamplesSection({ rules }) {
   return (
     <section className="card">
-      <h2>How the automation replies</h2>
-      <p className="hint">
-        Example conversations generated from the live rules — this is exactly what a customer
-        experiences.
-      </p>
+      <div className="card-head">
+        <h2>
+          <MessagesSquare size={17} aria-hidden="true" />
+          How the automation replies
+        </h2>
+        <span className="hint">Generated from the live rules</span>
+      </div>
       {(rules.commentRules ?? []).map((rule) => (
         <CommentExample key={rule.id} rule={rule} />
       ))}
